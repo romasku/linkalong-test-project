@@ -1,0 +1,53 @@
+version: "3.7"
+services:
+  postgres:
+    image: postgres:12.3
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+  redis:
+    image: redis:4.0.6
+  asgi:
+    build:
+      context: linkalong-backend
+      dockerfile: ./docker/asgi/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+    environment:
+      DATABASE_HOST: postgres
+      CELERY_BROKER_URL: redis://redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      - backend-variables.env
+  celery:
+    build:
+      context: linkalong-backend
+      dockerfile: ./docker/asgi/Dockerfile
+    depends_on:
+      - postgres
+      - redis
+    links:
+      - postgres
+      - redis
+    environment:
+      DATABASE_HOST: postgres
+      CELERY_BROKER_URL: redis://redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      - backend-variables.env
+    command: python -m celery -A linkalong worker -E -l info
+  frontend:
+    build:
+      context: linkalong-frontend
+      dockerfile: ./docker/Dockerfile
+    ports:
+      - "8080:80"
